@@ -6,4 +6,4 @@
 - Three.js — MIT — https://github.com/mrdoob/three.js
 - React — MIT — https://github.com/facebook/react
 
-All geometry and textures are generated procedurally from the supplied REBUILD.md source. No third-party models, texture files or font files are included.
+All geometry and textures are generated procedurally. No third-party models, texture files or font files are included.

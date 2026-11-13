@@ -6,3 +6,8 @@ playwright-report/
 test-results/
 .env.local
 artifacts/
+
+# Internal reference and work notes
+/REBUILD.md
+/docs/plans/
+/docs/VERIFICATION.md

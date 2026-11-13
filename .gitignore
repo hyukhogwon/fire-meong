@@ -1,0 +1,8 @@
+node_modules/
+dist/
+assets/raw/*.wav
+assets/raw/*.aiff
+playwright-report/
+test-results/
+.env.local
+artifacts/

@@ -1,8 +1,10 @@
+import { acquirePlaybackSession } from "./playback-session";
 import { LoopLayer, CRICKET_MIX } from "./loop-layer";
 import { boostRamps } from "./schedule";
 import { volumeToGain } from "../core/settings";
 export class FireAudio {
   private ctx: AudioContext | null = null;
+  private releaseSession: (() => void) | null = null;
   private master: GainNode | null = null;
   private boostGain: GainNode | null = null;
   private layers: LoopLayer[] = [];
@@ -21,38 +23,39 @@ export class FireAudio {
       return;
     }
     this.closeContext();
-    const ctx = new AudioContext({ latencyHint: "playback" });
-    this.ctx = ctx;
-    // resume during the user gesture, before fetching or decoding assets.
-    const resume = ctx.resume();
-    const master = ctx.createGain(),
-      boost = ctx.createGain(),
-      cricket = ctx.createGain(),
-      limiter = ctx.createDynamicsCompressor();
-    this.master = master;
-    this.boostGain = boost;
-    master.gain.value = volumeToGain(volume);
-    cricket.gain.value = CRICKET_MIX;
-    limiter.threshold.value = -3;
-    limiter.knee.value = 0;
-    limiter.ratio.value = 20;
-    limiter.attack.value = 0.003;
-    limiter.release.value = 0.25;
-    boost.connect(master);
-    cricket.connect(master);
-    master.connect(limiter).connect(ctx.destination);
-    const load = async (name: string) => {
-      const format =
-        import.meta.env.VITE_AUDIO_FORMAT === "m4a" ? "m4a" : "mp3";
-      const r = await fetch(
-        `${import.meta.env.BASE_URL}audio/${name}.${format}`,
-      );
-      if (!r.ok) throw Error("음원을 불러오지 못했어요.");
-      const b = await ctx.decodeAudioData(await r.arrayBuffer());
-      if (b.duration <= 6) throw Error("음원이 너무 짧아요.");
-      return b;
-    };
+    this.releaseSession = acquirePlaybackSession();
     try {
+      const ctx = new AudioContext({ latencyHint: "playback" });
+      this.ctx = ctx;
+      // resume during the user gesture, before fetching or decoding assets.
+      const resume = ctx.resume();
+      const master = ctx.createGain(),
+        boost = ctx.createGain(),
+        cricket = ctx.createGain(),
+        limiter = ctx.createDynamicsCompressor();
+      this.master = master;
+      this.boostGain = boost;
+      master.gain.value = volumeToGain(volume);
+      cricket.gain.value = CRICKET_MIX;
+      limiter.threshold.value = -3;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.25;
+      boost.connect(master);
+      cricket.connect(master);
+      master.connect(limiter).connect(ctx.destination);
+      const load = async (name: string) => {
+        const format =
+          import.meta.env.VITE_AUDIO_FORMAT === "m4a" ? "m4a" : "mp3";
+        const r = await fetch(
+          `${import.meta.env.BASE_URL}audio/${name}.${format}`,
+        );
+        if (!r.ok) throw Error("음원을 불러오지 못했어요.");
+        const b = await ctx.decodeAudioData(await r.arrayBuffer());
+        if (b.duration <= 6) throw Error("음원이 너무 짧아요.");
+        return b;
+      };
       const [fire, insects] = await Promise.all([
         load("campfire"),
         load("crickets").catch(() => {
@@ -117,6 +120,8 @@ export class FireAudio {
       void this.ctx.close();
     }
     this.ctx = null;
+    this.releaseSession?.();
+    this.releaseSession = null;
   }
   dispose() {
     this.disposed = true;

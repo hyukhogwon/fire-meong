@@ -46,3 +46,5 @@ pnpm preview
 `scripts/browser-check.mjs`, `audio-recovery-check.mjs`, `long-audio-check.mjs`, `storage-recovery-check.mjs`, `subpath-check.mjs`는 Playwright 기반 통합 확인용입니다. 먼저 `pnpm dev`를 실행하세요. 브라우저 경로는 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 환경변수로 지정하거나, `pnpm exec playwright install chromium`으로 기본 브라우저를 설치할 수 있습니다. 긴 테스트는 `pnpm preview --port 4173` 서버에서 실행하며 약 4분 35초가 걸립니다. 이는 오디오 시계와 루프 예약의 연속성을 검사합니다. Headless Chromium은 다른 탭을 열어도 문서를 visible로 유지할 수 있으므로 실제 백그라운드 탭 제한과 사람의 청취에 의한 음질 판정은 별도로 확인해야 합니다.
 
 데스크톱용이며 WebGL과 Web Audio 지원 브라우저가 필요합니다. 운영체제 절전이나 브라우저에 의한 탭 폐기는 오디오를 중단할 수 있으며, 재개 버튼으로 복구할 수 있습니다.
+
+자동 배포 구성과 최초 AWS Role 생성 방법은 [배포 안내](docs/DEPLOYMENT.md)를 참고하세요. master push에서 S3와 CloudFront로 배포합니다.

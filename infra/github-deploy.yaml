@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: GitHub OIDC deployment role for hyukhogwon/fire-meong master
+Parameters:
+  ExistingOidcProviderArn:
+    Type: String
+    Default: ""
+    Description: Existing GitHub OIDC provider ARN in this AWS account, or empty to create one
+Conditions:
+  CreateOidcProvider: !Equals [!Ref ExistingOidcProviderArn, ""]
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+  DeploymentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Deploy fire-meong from GitHub master via OIDC
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated:
+                !If [
+                  CreateOidcProvider,
+                  !Ref GitHubOidcProvider,
+                  !Ref ExistingOidcProviderArn,
+                ]
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: repo:hyukhogwon/fire-meong:ref:refs/heads/master
+      Policies:
+        - PolicyName: PublishFireMeong
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource: arn:aws:s3:::fire-meong
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: arn:aws:s3:::fire-meong/*
+              - Effect: Allow
+                Action:
+                  [cloudfront:CreateInvalidation, cloudfront:GetInvalidation]
+                Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/E3EYSTS6TN32K0
+Outputs:
+  DeploymentRoleArn:
+    Description: Set as GitHub repository variable AWS_ROLE_ARN
+    Value: !GetAtt DeploymentRole.Arn

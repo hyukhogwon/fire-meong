@@ -34,7 +34,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: repo:hyukhogwon/fire-meong:ref:refs/heads/master
+                token.actions.githubusercontent.com:sub: repo:hyukhogwon@269665660/fire-meong@1456093621:ref:refs/heads/master
       Policies:
         - PolicyName: PublishFireMeong
           PolicyDocument:

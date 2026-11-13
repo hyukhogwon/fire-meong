@@ -17,7 +17,7 @@
 5. 검토 화면에서 IAM 리소스 생성 확인 항목을 체크하고 스택을 생성합니다. 이 작업은 GitHub의 이 저장소 master에 AWS 배포 권한을 부여합니다.
 6. `CREATE_COMPLETE`가 되면 **출력(Outputs) → DeploymentRoleArn** 값을 복사합니다.
 
-이 Role은 `repo:hyukhogwon/fire-meong:ref:refs/heads/master`만 신뢰합니다. 권한은 해당 버킷 조회·파일 업로드와 해당 CF 배포의 invalidation 생성·상태 조회입니다. 삭제, ACL 변경, 다른 리소스 관리는 허용하지 않습니다. 액세스 키는 필요하지 않습니다.
+이 Role은 `repo:hyukhogwon@269665660/fire-meong@1456093621:ref:refs/heads/master`만 신뢰합니다. 권한은 해당 버킷 조회·파일 업로드와 해당 CF 배포의 invalidation 생성·상태 조회입니다. 삭제, ACL 변경, 다른 리소스 관리는 허용하지 않습니다. 액세스 키는 필요하지 않습니다.
 
 ## 2. GitHub 변수 설정
 
@@ -32,7 +32,7 @@ Role ARN은 비밀번호가 아니며 저장소 변수로 관리합니다. `AWS_
 
 ## 3. master와 첫 배포
 
-현재 배포 브랜치와 기본 브랜치는 master를 사용합니다. 새 환경에서 Role ARN을 연결한 후 다음 명령으로 master를 생성할 수 있습니다.
+현재 배포 브랜치는 master이며 GitHub 기본 브랜치는 main으로 유지합니다. 새 환경에서 Role ARN을 연결한 후 다음 명령으로 master를 생성할 수 있습니다.
 
 ```sh
 git switch -c master
@@ -55,3 +55,7 @@ Actions의 **Deploy to S3 and CloudFront** 실행이 성공하면 새 배포가 
 - 이 앱에는 클라이언트 라우팅이 없으므로 SPA 에러 페이지 재작성은 필요하지 않습니다.
 
 공식 문서: [GitHub OIDC와 AWS](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws), [CloudFormation OIDC Provider](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-iam-oidcprovider.html), [CloudFront 캐시](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html).
+
+## OIDC subject 확인
+
+이 저장소는 이름에 고정 ID가 붙는 GitHub immutable subject 형식입니다. 신뢰 정책에 이름만 적으면 인증에 실패합니다. 실제 prefix는 `gh api repos/hyukhogwon/fire-meong/actions/oidc/customization/sub --jq .sub_claim_prefix`로 확인합니다. 현재 master subject는 `repo:hyukhogwon@269665660/fire-meong@1456093621:ref:refs/heads/master`입니다.

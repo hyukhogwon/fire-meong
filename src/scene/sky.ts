@@ -54,7 +54,7 @@ const MILKY_POINTS = 2600;
  */
 function milkyWay(
   toScene: (ra: number, dec: number) => [number, number, number] | null,
-): THREE.Points {
+): THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial> {
   let seed = 4242;
   const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const gauss = () => (rand() + rand() + rand() + rand() - 2) * 1.7;
@@ -82,7 +82,10 @@ function milkyWay(
   const points = new THREE.Points(
     geo,
     new THREE.ShaderMaterial({
-      uniforms: { uDpr: { value: Math.min(window.devicePixelRatio, 1.5) } },
+      uniforms: {
+        uDpr: { value: Math.min(window.devicePixelRatio, 1.5) },
+        uDim: { value: 1 },
+      },
       vertexShader: /* glsl */ `
         attribute float aSize;
         attribute vec3 aColor;
@@ -95,11 +98,12 @@ function milkyWay(
         }
       `,
       fragmentShader: /* glsl */ `
+        uniform float uDim;
         varying vec3 vColor;
         void main() {
           float d = length(gl_PointCoord - 0.5) * 2.0;
           float a = 1.0 - smoothstep(0.0, 1.0, d);
-          gl_FragColor = vec4(vColor * a * a, 1.0);
+          gl_FragColor = vec4(vColor * a * a * uDim, 1.0);
         }
       `,
       transparent: true,
@@ -127,7 +131,12 @@ function starColor(bv: number, mag: number, out: THREE.Color): THREE.Color {
  * The real sky over 38°N 127°E at tonight's midnight (KST), drawn so that due
  * south is straight ahead. Stars below the horizon are skipped.
  */
-export function createSky(now: Date): THREE.Group {
+export interface Sky {
+  group: THREE.Group;
+  setDim(factor: number): void;
+}
+
+export function createSky(now: Date): Sky {
   const group = new THREE.Group();
   const lst = greenwichSiderealDeg(tonightMidnightKst(now)) + OBSERVER.lonDeg;
   const toScene = (
@@ -140,7 +149,9 @@ export function createSky(now: Date): THREE.Group {
     return [x * RADIUS, y * RADIUS, z * RADIUS];
   };
 
-  group.add(milkyWay(toScene));
+  const milky = milkyWay(toScene);
+  group.add(milky);
+  const starMaterials: THREE.PointsMaterial[] = [];
 
   const positions: number[][] = BUCKETS.map(() => []);
   const colors: number[][] = BUCKETS.map(() => []);
@@ -177,8 +188,15 @@ export function createSky(now: Date): THREE.Group {
       }),
     );
     points.frustumCulled = false;
+    starMaterials.push(points.material);
     group.add(points);
   });
 
-  return group;
+  return {
+    group,
+    setDim(factor) {
+      milky.material.uniforms.uDim.value = factor;
+      for (const material of starMaterials) material.opacity = factor;
+    },
+  };
 }

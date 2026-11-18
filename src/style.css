@@ -68,7 +68,8 @@ button {
 .log,
 .toast,
 .wish,
-.aurora {
+.aurora,
+.rain {
   background: var(--accent);
   color: var(--accent-ink);
   white-space: nowrap;
@@ -339,6 +340,7 @@ button {
 .start-overlay {
   background: linear-gradient(#05080e35, #05080e65);
   backdrop-filter: blur(1px);
+  pointer-events: none;
 }
 .actions {
   z-index: 1;
@@ -421,4 +423,8 @@ button:not(:disabled):hover {
   * {
     transition: none !important;
   }
+}
+
+.start-overlay .start {
+  pointer-events: auto;
 }

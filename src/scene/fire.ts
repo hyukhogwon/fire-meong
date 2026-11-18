@@ -1,3 +1,4 @@
+import { RAIN_FIRE_SCALE } from "../core/rain";
 import * as THREE from "three";
 import { BOOST } from "../audio/schedule";
 import { softPoints } from "./soft-points";
@@ -285,6 +286,7 @@ export interface Fire {
   /** Coloured flames: `colors` are one or two sRGB hex strings, `level` is 0..1. */
   setAurora(colors: readonly string[], level: number): void;
   /** `pxPerUnit`: drawing-buffer pixels one world unit covers at distance 1. */
+  setRain(level: number): void;
   setPointScale(pxPerUnit: number): void;
 }
 
@@ -303,6 +305,7 @@ export function createFire(): Fire {
     group.add(m);
     return m.material;
   });
+  let rainScale = 1;
   const auroraTint = new THREE.Color();
   let auroraLevel = 0;
   let auroraKey = "";
@@ -379,7 +382,8 @@ export function createFire(): Fire {
         p.z + Math.cos(time * 1.7 + p.phase * 1.3) * wob * l;
       const fade =
         Math.pow(1 - l, 1.6) *
-        (0.55 + 0.45 * Math.sin(time * 14 + p.phase * 5));
+        (0.55 + 0.45 * Math.sin(time * 14 + p.phase * 5)) *
+        rainScale;
       sparks.size[i] = 0.035 + 0.03 * p.reach;
       sparks.color.set([3.2 * fade, 1.25 * fade, 0.28 * fade, 1], i * 4);
     }
@@ -404,7 +408,10 @@ export function createFire(): Fire {
       // Lit warm from below near the flame, cooling to grey as it rises.
       const warm = Math.max(0, 1 - l * 3);
       const alpha =
-        Math.sin(Math.PI * Math.min(1, l * 1.15)) * 0.085 * (1 + 0.6 * level);
+        Math.sin(Math.PI * Math.min(1, l * 1.15)) *
+        0.085 *
+        (1 + 0.6 * level) *
+        rainScale;
       smoke.color.set(
         [0.09 + 0.35 * warm, 0.085 + 0.12 * warm, 0.085 + 0.02 * warm, alpha],
         i * 4,
@@ -419,7 +426,7 @@ export function createFire(): Fire {
       Math.sin(time * 11) * 0.6 +
       Math.sin(time * 17.3) * 0.4 +
       Math.sin(time * 5.1);
-    light.intensity = (20 + flicker * 2.6) * (1 + 0.7 * level);
+    light.intensity = (20 + flicker * 2.6) * (1 + 0.7 * level) * rainScale;
     light.color.copy(FIRE_LIGHT).lerp(auroraTint, 0.3 * auroraLevel);
     light.position.set(
       Math.sin(time * 7.3) * 0.035,
@@ -453,6 +460,16 @@ export function createFire(): Fire {
         m.uniforms.uB.value.set(last);
       }
       auroraTint.set(colors[0]).lerp(new THREE.Color(last), 0.5);
+    },
+    setRain(level) {
+      rainScale = THREE.MathUtils.lerp(1, RAIN_FIRE_SCALE, level);
+      // Billboard dimensions are applied in the vertex shader.
+      flames.forEach((m, i) =>
+        m.uniforms.uSize.value.set(
+          FLAME_LAYERS[i].w * rainScale,
+          FLAME_LAYERS[i].h * rainScale,
+        ),
+      );
     },
     setPointScale(pxPerUnit) {
       smoke.points.material.uniforms.uPx.value = pxPerUnit;

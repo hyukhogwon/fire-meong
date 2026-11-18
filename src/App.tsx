@@ -1,3 +1,4 @@
+import { initialRain, loadRain, saveRain, toggleRain } from "./core/rain";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Stage } from "./scene/stage";
 import { FireAudio } from "./audio/fire-audio";
@@ -53,6 +54,7 @@ export function App() {
   const canvas = useRef<HTMLCanvasElement>(null),
     stage = useRef<Stage | null>(null),
     audio = useRef<FireAudio | null>(null);
+  const [rain, setRain] = useState(() => initialRain(loadRain(store)));
   const [identity, setIdentity] = useState(() =>
     loadOrCreateIdentity(
       store,
@@ -76,6 +78,7 @@ export function App() {
     try {
       stage.current = new Stage(canvas.current!);
       stage.current.setSelf(identity);
+      stage.current.setRain(rain);
     } catch (e) {
       console.error(e);
       setSceneError(
@@ -83,6 +86,11 @@ export function App() {
       );
     }
     audio.current = new FireAudio(() => setStatus("interrupted"), setNotice);
+    audio.current.setRain(rain.on);
+    const skyTimer = window.setInterval(
+      () => stage.current?.updateSky(new Date()),
+      3_600_000,
+    );
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     const visible = () => {
       setNow(Date.now());
@@ -91,6 +99,7 @@ export function App() {
     document.addEventListener("visibilitychange", visible);
     return () => {
       clearInterval(timer);
+      clearInterval(skyTimer);
       document.removeEventListener("visibilitychange", visible);
       stage.current?.dispose();
       audio.current?.dispose();
@@ -120,6 +129,13 @@ export function App() {
     wishLeft = wishes.remainingMs(now),
     toasting = toastProgress(toastAt, now) !== null,
     auroraLeft = auroraRemainingMs(auroraAt, now);
+  function changeRain() {
+    const next = toggleRain(rain, Date.now());
+    saveRain(store, next.on);
+    stage.current?.setRain(next);
+    audio.current?.setRain(next.on);
+    setRain(next);
+  }
   function open(type: Modal) {
     setText("");
     setPicked([]);
@@ -209,6 +225,9 @@ export function App() {
           {auroraLeft
             ? `🌈 타는 중 (${formatRemaining(auroraLeft)})`
             : "🌈 오로라 가루"}
+        </button>
+        <button className="rain" aria-pressed={rain.on} onClick={changeRain}>
+          {rain.on ? "☀️ 비 그치기" : "☔ 비 내리기"}
         </button>
       </div>
       <button

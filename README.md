@@ -32,11 +32,13 @@ pnpm preview
 
 장작은 10분, 소원은 3시간 쿨타임이며 새로고침 후에도 유지됩니다. 마시멜로는 60초, 오로라는 30초 지속합니다. 이름·모습, 볼륨과 소원 기록은 localStorage에 저장됩니다. 저장소를 사용할 수 없으면 현재 세션 메모리로 동작합니다.
 
+☔ 비 내리기로 빗소리와 천막을 켜거나 끌 수 있습니다. 전환은 3초이며 비 설정은 새로고침 후에도 유지됩니다.
+
 ## 에셋과 음질
 
 현재 포함된 음원은 Freesound **HQ MP3 미리듣기**입니다. 원본 WAV/AIFF를 게인·리미터로 인코딩한 음원과 같은 음질이라고 보장하지 않습니다. `CREDITS.md`에 출처가 있습니다. 음원과 별 데이터가 저장소에 포함되어 실행 중 외부 서비스에 연결할 필요가 없습니다.
 
-원본 음원을 확보했다면 `assets/raw/729396__heckfricker__campfire-02.wav`와 `assets/raw/333221__hdfreema__night-crickets-back-porch.aiff`로 저장하고, ffmpeg와 Python/numpy가 있는 환경에서 `pnpm encode-audio`를 실행하세요. 원본 파일은 Git에서 제외됩니다. 생성된 M4A를 사용하려면 `.env.local`에 `VITE_AUDIO_FORMAT=m4a`를 넣고 다시 빌드합니다. 기본은 포함된 MP3입니다. 장작에 `loudnorm`을 사용하지 않습니다.
+원본 음원을 확보했다면 `assets/raw/729396__heckfricker__campfire-02.wav`와 `assets/raw/333221__hdfreema__night-crickets-back-porch.aiff`로 저장하고, ffmpeg와 Python/numpy가 있는 환경에서 `pnpm encode-audio`를 실행하세요. 빗소리 원본 경로는 `assets/raw/251233__pulswelle__in-the-tent-rain.wav`입니다. 빗소리는 `public/audio/rain.mp3`로 인코딩하며 오디오 형식 설정과 관계없이 MP3를 사용합니다. 원본 파일은 Git에서 제외됩니다. 생성된 M4A를 사용하려면 `.env.local`에 `VITE_AUDIO_FORMAT=m4a`를 넣고 다시 빌드합니다. 기본은 포함된 MP3입니다. 장작에 `loudnorm`을 사용하지 않습니다.
 
 ## 검증
 

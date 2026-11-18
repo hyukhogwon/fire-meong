@@ -1,3 +1,11 @@
+import {
+  RAIN_SKY_SCALE,
+  initialRain,
+  rainLevel,
+  type RainState,
+} from "../core/rain";
+import { createRain } from "./rain";
+import { createTarp } from "./tarp";
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
@@ -9,7 +17,7 @@ import { createDog } from "./dog";
 import { HORIZON, createEnvironment } from "./environment";
 import { createFire } from "./fire";
 import type { Actor } from "./parts";
-import { createSky } from "./sky";
+import { createSky, type Sky } from "./sky";
 import { createMarshmallowStick } from "./marshmallow";
 import { toastProgress } from "../core/marshmallow";
 import { createNametag } from "./nametag";
@@ -24,6 +32,8 @@ const CAMERA_TARGET = new THREE.Vector3(0, 1.55, -0.6);
 /** The dog lies at the camper's side nearer the camera (seat-local x, z). */
 const DOG_OFFSET = { x: -1.45, z: -0.15, turn: 0.35 };
 const FRAME_ASPECT = 1.4;
+const FOG_NEAR = 9;
+const FOG_FAR = 24;
 /** Seat: 2.2 from the fire, behind-left as seen from the camera, facing the fire. */
 const SEAT = new THREE.Vector3(-1.35, 0, -1.74);
 
@@ -53,7 +63,11 @@ export class Stage {
   private toastStartedAt: number | null = null;
   private readonly timer = new THREE.Timer();
   private sinceRender = 0;
-  private sky: THREE.Group | null = null;
+  private sky: Sky | null = null;
+  private skyDim = 1;
+  private rain = initialRain(false);
+  private readonly rainfall = createRain();
+  private readonly tarp = createTarp();
   private readonly meteors = new MeteorShower();
   private aurora: { startedAt: number; colors: readonly string[] } | null =
     null;
@@ -83,21 +97,21 @@ export class Stage {
     this.composer.addPass(new OutputPass());
 
     this.scene.background = HORIZON;
-    this.scene.fog = new THREE.Fog(HORIZON, 9, 24);
+    this.scene.fog = new THREE.Fog(HORIZON, FOG_NEAR, FOG_FAR);
 
     // Pulled back and tilted up a little so more of the night sky shows.
     this.camera.position.set(CAMERA_POS.x, CAMERA_POS.y, CAMERA_POS.z);
     this.camera.lookAt(CAMERA_TARGET);
 
-    this.scene.add(new THREE.HemisphereLight(0x4a5f8a, 0x0e140e, 0.55));
-    const moon = new THREE.DirectionalLight(0x8fa6d6, 0.35);
+    this.scene.add(new THREE.HemisphereLight(0x4a5f8a, 0x0e140e, 0.75));
+    const moon = new THREE.DirectionalLight(0x8fa6d6, 0.5);
     moon.position.set(-6, 10, -4);
     this.scene.add(moon);
 
     this.scene.add(this.environment.group);
     this.updateSky(new Date());
     this.scene.add(this.fire.group);
-    this.scene.add(this.meteors.mesh);
+    this.scene.add(this.meteors.mesh, this.rainfall.mesh);
 
     this.seat.position.copy(SEAT);
     this.seat.rotation.y = Math.atan2(-SEAT.x, -SEAT.z);
@@ -106,6 +120,14 @@ export class Stage {
     this.marshmallow.group.position.copy(SEAT);
     this.marshmallow.group.rotation.y = this.seat.rotation.y;
     this.scene.add(this.marshmallow.group);
+    this.tarp.group.position.copy(SEAT);
+    this.tarp.group.rotation.y = this.seat.rotation.y;
+    this.scene.add(this.tarp.group);
+    this.tarp.group.updateMatrixWorld(true);
+    this.rainfall.setShelter(
+      this.tarp.group.matrixWorld.clone().invert(),
+      this.tarp.shelter,
+    );
 
     // The dog lies beside the seat, nose toward the fire.
     const turn = this.seat.rotation.y;
@@ -149,11 +171,12 @@ export class Stage {
   /** Rebuilds the star field for the night that `now` belongs to. */
   updateSky(now: Date): void {
     if (this.sky) {
-      this.scene.remove(this.sky);
-      disposeTree(this.sky);
+      this.scene.remove(this.sky.group);
+      disposeTree(this.sky.group);
     }
     this.sky = createSky(now);
-    this.scene.add(this.sky);
+    this.sky.setDim(this.skyDim);
+    this.scene.add(this.sky.group);
   }
 
   flare(): void {
@@ -173,6 +196,10 @@ export class Stage {
   /** Throws aurora powder on the fire: coloured flames for a while, by wall clock. */
   startAurora(startedAt: number, colors: readonly string[]): void {
     this.aurora = { startedAt, colors };
+  }
+
+  setRain(state: RainState): void {
+    this.rain = state;
   }
 
   dispose(): void {
@@ -218,9 +245,19 @@ export class Stage {
     const dt = Math.min(this.timer.getDelta(), 0.1);
     this.sinceRender += dt;
     if (this.sinceRender < 1 / MAX_FPS - 0.002) return;
+    const rain = rainLevel(this.rain, Date.now());
+    this.fire.setRain(rain);
     this.fire.update(this.sinceRender);
     const elapsed = this.timer.getElapsed();
+    this.environment.setRain(rain);
     this.environment.update(elapsed, this.fire.light);
+    this.rainfall.update(elapsed, rain, this.fire.light);
+    this.tarp.setLevel(rain);
+    this.skyDim = THREE.MathUtils.lerp(1, RAIN_SKY_SCALE, rain);
+    this.sky?.setDim(this.skyDim);
+    const fog = this.scene.fog as THREE.Fog;
+    fog.near = THREE.MathUtils.lerp(FOG_NEAR, 5, rain);
+    fog.far = THREE.MathUtils.lerp(FOG_FAR, 16, rain);
     this.self?.update(elapsed);
     this.dog.update(elapsed);
     const p = toastProgress(this.toastStartedAt, Date.now());

@@ -5,8 +5,8 @@ import { type Pond, WATER_Y, createPond } from "./pond";
 import { softPoints } from "./soft-points";
 
 /** Sky colour at the horizon; the fog uses it too so far ground melts into the sky. */
-export const HORIZON = new THREE.Color("#131f38");
-const ZENITH = new THREE.Color("#04070f");
+export const HORIZON = new THREE.Color("#1a2a4a");
+const ZENITH = new THREE.Color("#070c1a");
 
 const FIREFLIES = 18;
 
@@ -60,6 +60,56 @@ function skyDome(): THREE.Mesh {
   );
   dome.renderOrder = -10;
   dome.frustumCulled = false;
+  return dome;
+}
+
+/**
+ * A drifting overcast between the ridges (r 78) and the stars (r 90). Drawn
+ * before the stars, which the stage dims separately.
+ */
+function cloudDome(): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(85, 32, 16),
+    new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uLevel: { value: 0 } },
+      vertexShader: /* glsl */ `
+        varying vec3 vDir;
+        void main() {
+          vDir = normalize(position);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uTime, uLevel;
+        varying vec3 vDir;
+        float hash(vec2 p) {
+          p = fract(p * vec2(123.34, 456.21));
+          p += dot(p, p + 45.32);
+          return fract(p.x * p.y);
+        }
+        float vnoise(vec2 p) {
+          vec2 i = floor(p), f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+        }
+        void main() {
+          vec3 d = normalize(vDir);
+          // Project onto a flat cloud deck overhead so the puffs shrink toward the horizon.
+          vec2 q = d.xz / max(d.y, 0.08) * 1.6 + vec2(uTime * 0.02, uTime * 0.008);
+          float n = vnoise(q) * 0.6 + vnoise(q * 2.3 + 7.1) * 0.3 + vnoise(q * 5.1 + 3.7) * 0.1;
+          float a = uLevel * (0.55 + 0.4 * n) * smoothstep(-0.02, 0.12, d.y);
+          gl_FragColor = vec4(vec3(0.075, 0.085, 0.11) * (0.8 + 0.4 * n), a);
+        }
+      `,
+      side: THREE.BackSide,
+      transparent: true,
+      depthWrite: false,
+      fog: false,
+    }),
+  );
+  dome.renderOrder = -5;
+  dome.frustumCulled = false;
+  dome.visible = false;
   return dome;
 }
 
@@ -205,11 +255,13 @@ export interface Environment {
   group: THREE.Group;
   update(time: number, fire: THREE.PointLight): void;
   setPointScale(pxPerUnit: number): void;
+  setRain(level: number): void;
 }
 
 export function createEnvironment(): Environment {
   const group = new THREE.Group();
-  group.add(skyDome());
+  const clouds = cloudDome();
+  group.add(skyDome(), clouds);
   // Ridges sit inside the star sphere so they hide stars below the skyline.
   group.add(ridge(78, 3.2, 9.5, "#0c1528", 5));
   group.add(ridge(62, 2.6, 5.2, "#080e1c", 23));
@@ -344,6 +396,7 @@ export function createEnvironment(): Environment {
     group,
     update(time, fire) {
       pond.update(time, fire);
+      clouds.material.uniforms.uTime.value = time;
       homes.forEach((h, i) => {
         const p = time * h.speed + h.phase;
         flies.pos[i * 3] = h.x + Math.sin(p) * 0.7 + Math.sin(p * 2.3) * 0.2;
@@ -362,6 +415,11 @@ export function createEnvironment(): Environment {
       flies.geo.attributes.position.needsUpdate = true;
       flies.geo.attributes.aSize.needsUpdate = true;
       flies.geo.attributes.aColor.needsUpdate = true;
+    },
+    setRain(level) {
+      clouds.visible = level > 0;
+      clouds.material.uniforms.uLevel.value = level;
+      pond.setRain(level);
     },
     setPointScale(pxPerUnit) {
       flies.points.material.uniforms.uPx.value = pxPerUnit;

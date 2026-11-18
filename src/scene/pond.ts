@@ -27,6 +27,7 @@ function waterMaterial(
       uFire: { value: new THREE.Vector3(0, 0.9, 0) },
       uFireColor: { value: new THREE.Color(0xff7a2e) },
       uFireLevel: { value: 1 },
+      uRain: { value: 0 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorld;
@@ -39,7 +40,7 @@ function waterMaterial(
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uTime, uFireLevel;
+      uniform float uTime, uFireLevel, uRain;
       uniform vec3 uHorizon, uZenith, uFire, uFireColor;
       varying vec3 vWorld;
       varying vec2 vP;
@@ -53,13 +54,35 @@ function waterMaterial(
         f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
       }
+      // Raindrop rings: one drop per grid cell, each cell on its own beat.
+      // Returns the outward tilt the rings give the surface.
+      vec2 rings(vec2 q) {
+        vec2 tilt = vec2(0.0);
+        for (int j = 0; j < 2; j++) {
+          vec2 g = q * 3.2 + float(j) * vec2(0.37, 0.61);
+          vec2 cell = floor(g);
+          for (int k = 0; k < 4; k++) {
+            vec2 c = cell + vec2(mod(float(k), 2.0), floor(float(k) / 2.0)) - 0.5;
+            vec2 centre = c + 0.2 + 0.6 * vec2(hash(c), hash(c + 17.0));
+            float age = fract(uTime * 0.9 + hash(c + 31.0 + float(j)));
+            vec2 off = g - centre;
+            float r = length(off);
+            // Square by hand: pow() of a negative base is undefined in GLSL (NaN on some GPUs).
+            float e = (r - age * 0.55) * 18.0;
+            float ring = exp(-e * e) * (1.0 - age) * (1.0 - age);
+            tilt += off / max(r, 1e-3) * ring;
+          }
+        }
+        return tilt;
+      }
       void main() {
         float d = length(vP);
         vec2 q = vWorld.xz;
         // Two ripple fields sliding past each other tilt the surface a little.
         float a = vnoise(q * 3.1 + vec2(uTime * 0.21, uTime * 0.13)) + 0.5 * vnoise(q * 7.3 - uTime * 0.3);
         float b = vnoise(q * 3.1 + vec2(4.7 - uTime * 0.17, 9.2 + uTime * 0.19)) + 0.5 * vnoise(q * 7.3 + 3.3 + uTime * 0.27);
-        vec3 n = normalize(vec3((a - 0.75) * 0.22, 1.0, (b - 0.75) * 0.22));
+        vec2 drops = uRain > 0.0 ? rings(q) * 0.35 * uRain : vec2(0.0);
+        vec3 n = normalize(vec3((a - 0.75) * 0.22 + drops.x, 1.0, (b - 0.75) * 0.22 + drops.y));
         vec3 v = normalize(cameraPosition - vWorld);
         vec3 r = reflect(-v, n);
         vec3 sky = mix(uHorizon, uZenith, pow(clamp(r.y, 0.0, 1.0), 0.6));
@@ -83,6 +106,7 @@ function waterMaterial(
 export interface Pond {
   group: THREE.Group;
   /** `fire`: the campfire's light, so the glow on the water follows its colour and flicker. */
+  setRain(level: number): void;
   update(time: number, fire: THREE.PointLight): void;
 }
 
@@ -214,6 +238,9 @@ export function createPond(horizon: THREE.Color, zenith: THREE.Color): Pond {
 
   return {
     group,
+    setRain(level) {
+      water.material.uniforms.uRain.value = level;
+    },
     update(time, fire) {
       const u = water.material.uniforms;
       u.uTime.value = time;

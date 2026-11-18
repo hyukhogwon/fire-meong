@@ -38,3 +38,20 @@ if [ "$cenc" -gt "$craw" ]; then
   echo "cricket encode added dropouts" >&2
   exit 1
 fi
+
+# Rain on a tent (CC0, Freesound 251233): 24-bit WAV, -38.9 LUFS, LRA 5.6 LU,
+# drop transients up to -0.5 dBFS. +8 dB lifts it near the cricket bed and a
+# light limiter (0.8) only shaves drop peaks (-31.9 LUFS measured with 0.9).
+# MP3 128k CBR stereo keeps the tent's stereo width at ~4 MB (WAV is 66 MB).
+RSRC=assets/raw/251233__pulswelle__in-the-tent-rain.wav
+ROUT=public/audio/rain.mp3
+ffmpeg -hide_banner -loglevel error -y -i "$RSRC" \
+  -af "volume=8dB,alimiter=limit=0.8:attack=0.5:release=5:level=false" \
+  -c:a libmp3lame -b:a 128k "$ROUT"
+rraw=$(python3 -I scripts/check-dropouts.py "$RSRC" 10 | head -1 | sed 's/.*: //')
+renc=$(python3 -I scripts/check-dropouts.py "$ROUT" 10 | head -1 | sed 's/.*: //')
+echo "rain dropout windows: raw=$rraw encoded=$renc"
+if [ "$renc" -gt "$rraw" ]; then
+  echo "rain encode added dropouts" >&2
+  exit 1
+fi

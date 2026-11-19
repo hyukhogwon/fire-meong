@@ -1,10 +1,11 @@
 import { initialRain, loadRain, saveRain, toggleRain } from "./core/rain";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Stage } from "./scene/stage";
+import { ActivityMenu } from "./components/ActivityMenu";
 import { FireAudio } from "./audio/fire-audio";
 import { safeStore } from "./core/storage";
 import { loadOrCreateIdentity, rerollIdentity } from "./core/identity";
-import { loadVolume, saveVolume } from "./core/settings";
+import { DEFAULT_VOLUME, loadVolume, saveVolume } from "./core/settings";
 import { LogBook } from "./core/log-book";
 import { WishBook } from "./core/wish-book";
 import { remainingMs, formatRemaining } from "./core/cooldown";
@@ -74,6 +75,13 @@ export function App() {
   >("idle");
   const [notice, setNotice] = useState(""),
     [sceneError, setSceneError] = useState("");
+  const volumeBeforeMute = useRef(volume || DEFAULT_VOLUME);
+  function changeVolume(value: number) {
+    if (value > 0) volumeBeforeMute.current = value;
+    setVolume(value);
+    saveVolume(store, value);
+    audio.current?.setVolume(value);
+  }
   useEffect(() => {
     try {
       stage.current = new Stage(canvas.current!);
@@ -163,10 +171,18 @@ export function App() {
           <p>잠시, 아무것도 하지 않아도 괜찮아요.</p>
         </div>
       </header>
-      <label className="volume">
-        <span className="volume-icon" aria-hidden="true">
-          {volume === 0 ? "🔇" : "🔊"}
-        </span>
+      <div className="volume" role="group" aria-label="소리 조절">
+        <button
+          className="volume-mute"
+          aria-label="음소거"
+          aria-pressed={volume === 0}
+          title={volume === 0 ? "음소거 해제" : "음소거"}
+          onClick={() =>
+            changeVolume(volume === 0 ? volumeBeforeMute.current : 0)
+          }
+        >
+          <span aria-hidden="true">{volume === 0 ? "🔇" : "🔊"}</span>
+        </button>
         <input
           className="volume-range"
           aria-label="볼륨"
@@ -175,15 +191,10 @@ export function App() {
           max="1"
           step="0.01"
           value={volume}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            setVolume(v);
-            saveVolume(store, v);
-            audio.current?.setVolume(v);
-          }}
+          onChange={(e) => changeVolume(Number(e.target.value))}
         />
-      </label>
-      <div className="actions" aria-label="캠프파이어 활동">
+      </div>
+      <ActivityMenu>
         <button
           className="log"
           disabled={!!logLeft || status !== "playing"}
@@ -229,7 +240,7 @@ export function App() {
         <button className="rain" aria-pressed={rain.on} onClick={changeRain}>
           {rain.on ? "☀️ 비 그치기" : "☔ 비 내리기"}
         </button>
-      </div>
+      </ActivityMenu>
       <button
         className="reroll"
         title="이름·모습 다시 뽑기"

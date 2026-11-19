@@ -42,8 +42,8 @@ button {
   backdrop-filter: blur(6px);
   border-radius: 999px;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 0 12px 0 2px;
   display: flex;
   position: fixed;
   top: 16px;
@@ -53,43 +53,95 @@ button {
   width: 120px;
   accent-color: var(--accent);
 }
-.actions {
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  width: max-content;
-  max-width: calc(100vw - 256px);
-  display: flex;
-  position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translate(-50%);
-}
-.log,
-.toast,
-.wish,
-.aurora,
-.rain {
-  background: var(--accent);
-  color: var(--accent-ink);
-  white-space: nowrap;
-  border-radius: 999px;
-  padding: 12px 24px;
-  font-weight: 600;
-  transition:
-    opacity 0.2s,
-    background 0.2s;
-  box-shadow: 0 0 24px #ff8c2859;
-}
-.log:disabled,
-.toast:disabled,
-.wish:disabled,
-.aurora:disabled {
-  cursor: default;
-  background: var(--glass);
+.volume-mute {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
   color: var(--ink);
-  box-shadow: none;
-  opacity: 0.85;
+  font-size: 18px;
+}
+.volume-mute[aria-pressed="true"] {
+  background: #ffb02e1a;
+}
+.activity-trigger {
+  position: fixed;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 120px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid #ffb02e99;
+  border-radius: 999px;
+  background: #21190ee8;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.activity-trigger[aria-expanded="true"] {
+  background: #382510;
+}
+.actions {
+  position: fixed;
+  inset: auto max(24px, env(safe-area-inset-right))
+    calc(max(24px, env(safe-area-inset-bottom)) + 54px) auto;
+  margin: 0;
+  width: min(232px, calc(100vw - 48px));
+  max-height: calc(100dvh - 170px - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: 1px solid #ffffff26;
+  border-radius: 16px;
+  background: #151820f2;
+  color: var(--ink);
+  box-shadow: 0 8px 32px #0006;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.actions:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+.actions button {
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 10px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.actions button + button {
+  border-top: 1px solid #ffffff0d;
+}
+.actions button:disabled {
+  cursor: default;
+  color: #a2a5ae;
+}
+.actions button:not(:disabled):hover,
+.actions button:focus-visible {
+  background: #ffffff0f;
+}
+.actions button:focus-visible {
+  outline-offset: -2px;
+}
+.actions .rain[aria-pressed="true"] {
+  color: var(--accent);
+  background: #ffb02e0d;
 }
 .reroll {
   background: var(--glass);
@@ -342,13 +394,6 @@ button {
   backdrop-filter: blur(1px);
   pointer-events: none;
 }
-.actions {
-  z-index: 1;
-}
-.actions button {
-  font-size: 13px;
-  padding: 13px 22px;
-}
 .reroll,
 .history {
   z-index: 1;
@@ -356,8 +401,8 @@ button {
 }
 .quiet-note {
   position: fixed;
-  right: 28px;
-  bottom: 35px;
+  right: calc(max(24px, env(safe-area-inset-right)) + 140px);
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 12px);
   color: #c0c4ce70;
   font-size: 10px;
   letter-spacing: 0.12em;
@@ -406,14 +451,22 @@ button:not(:disabled):hover {
     top: 20px;
     right: 20px;
   }
+  .quiet-note {
+    display: none;
+  }
+}
+@media (max-height: 500px) {
+  .activity-trigger {
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
   .actions {
-    gap: 8px;
-    bottom: 24px;
-    max-width: calc(100vw - 150px);
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 54px);
+    max-height: calc(100dvh - 144px - env(safe-area-inset-bottom));
+    padding: 4px;
   }
   .actions button {
-    padding: 11px 14px;
-    font-size: 12px;
+    padding: 8px 10px;
+    line-height: 1.4;
   }
   .quiet-note {
     display: none;

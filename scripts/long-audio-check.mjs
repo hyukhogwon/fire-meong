@@ -41,9 +41,11 @@ console.log(
     plays: window.__plays,
   })),
 );
+await page.getByRole("button", { name: "캠프 활동", exact: true }).click();
 await page
   .getByRole("button", { name: "🍡 마시멜로 굽기", exact: true })
   .click();
+await page.getByRole("button", { name: "캠프 활동", exact: true }).click();
 await page.getByRole("button", { name: "🌈 오로라 가루", exact: true }).click();
 await page.getByRole("button", { name: "초록", exact: true }).click();
 await page.getByRole("button", { name: "넣기", exact: true }).click();
@@ -66,6 +68,7 @@ for (let i = 0; i < 5; i++) {
 }
 await page.bringToFront();
 await page.waitForTimeout(1200);
+await page.getByRole("button", { name: "캠프 활동", exact: true }).click();
 if (
   await page
     .getByRole("button", { name: "🍡 마시멜로 굽기", exact: true })

@@ -7,7 +7,6 @@ import { LogBook } from "./log-book";
 import { pondDistance, POND } from "./pond";
 import { planShower, meteorFrame, showerElapsed } from "./meteors";
 import { tonightMidnightKst, horizontalToScene } from "./sky";
-import { marshmallowColor } from "./marshmallow";
 import { boostRamps } from "../audio/schedule";
 describe("저장 데이터 복구와 순수 로직", () => {
   it("표현할 수 없는 날짜와 손상된 소원을 버린다", () => {
@@ -79,10 +78,7 @@ describe("저장 데이터 복구와 순수 로직", () => {
     ).toBe("2026-11-13T15:00:00.000Z");
     expect(horizontalToScene(90, 0)[1]).toBeCloseTo(1);
   });
-  it("마시멜로 색과 부스트 타이밍을 보간한다", () => {
-    expect(marshmallowColor(0)).toBe("#fbf6ec");
-    expect(marshmallowColor(0.6)).toBe("#d9963e");
-    expect(marshmallowColor(1)).toBe("#a8652a");
+  it("부스트 타이밍을 보간한다", () => {
     expect(boostRamps(10)).toEqual([
       { value: 1, at: 10 },
       { value: 1.8, at: 13 },

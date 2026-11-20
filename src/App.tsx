@@ -9,7 +9,6 @@ import { DEFAULT_VOLUME, loadVolume, saveVolume } from "./core/settings";
 import { LogBook } from "./core/log-book";
 import { WishBook } from "./core/wish-book";
 import { remainingMs, formatRemaining } from "./core/cooldown";
-import { toastProgress } from "./core/marshmallow";
 import { AURORA_COLORS, auroraRemainingMs, togglePick } from "./core/aurora";
 const store = safeStore(),
   logs = new LogBook(store),
@@ -68,8 +67,7 @@ export function App() {
     [modal, setModal] = useState<Modal>(null),
     [text, setText] = useState(""),
     [picked, setPicked] = useState<string[]>([]);
-  const [toastAt, setToastAt] = useState<number | null>(null),
-    [auroraAt, setAuroraAt] = useState<number | null>(null);
+  const [auroraAt, setAuroraAt] = useState<number | null>(null);
   const [status, setStatus] = useState<
     "idle" | "loading" | "playing" | "error" | "interrupted"
   >("idle");
@@ -135,7 +133,6 @@ export function App() {
   }
   const logLeft = remainingMs(logs.lastLogAt(), now),
     wishLeft = wishes.remainingMs(now),
-    toasting = toastProgress(toastAt, now) !== null,
     auroraLeft = auroraRemainingMs(auroraAt, now);
   function changeRain() {
     const next = toggleRain(rain, Date.now());
@@ -208,18 +205,6 @@ export function App() {
           }}
         >
           🪵 장작 넣기{logLeft ? ` (${formatRemaining(logLeft)} 후)` : ""}
-        </button>
-        <button
-          className="toast"
-          disabled={toasting || status !== "playing"}
-          onClick={() => {
-            const at = Date.now();
-            setToastAt(at);
-            stage.current?.startToast(at);
-            setNow(at);
-          }}
-        >
-          {toasting ? "🍡 굽는 중…" : "🍡 마시멜로 굽기"}
         </button>
         <button
           className="wish"

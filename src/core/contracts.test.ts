@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { remainingMs, formatRemaining } from "./cooldown";
 import { safeStore } from "./storage";
 import { WishBook } from "./wish-book";
-import { toastProgress } from "./marshmallow";
 import { auroraLevel, togglePick } from "./aurora";
 import { loopPlay, reanchorIfLate } from "../audio/schedule";
 describe("시간과 저장 계약", () => {
@@ -36,7 +35,6 @@ describe("시간과 저장 계약", () => {
     expect(b.wish("다음", 10801000).ok).toBe(true);
   });
   it("숨긴 탭에서 돌아오면 효과가 종료된다", () => {
-    expect(toastProgress(0, 60000)).toBeNull();
     expect(auroraLevel(0, 30000)).toBe(0);
     expect(auroraLevel(0, 1000)).toBe(0.5);
     expect(togglePick(["green", "blue"], "pink")).toEqual(["green", "blue"]);

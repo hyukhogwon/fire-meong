@@ -18,8 +18,7 @@ import { HORIZON, createEnvironment } from "./environment";
 import { createFire } from "./fire";
 import type { Actor } from "./parts";
 import { createSky, type Sky } from "./sky";
-import { createMarshmallowStick } from "./marshmallow";
-import { toastProgress } from "../core/marshmallow";
+import { createMarshmallowSkewers } from "./marshmallow";
 import { createNametag } from "./nametag";
 import { MeteorShower } from "./meteors";
 import { auroraLevel } from "../core/aurora";
@@ -59,8 +58,6 @@ export class Stage {
   private readonly dog = createDog();
   private self: Actor | null = null;
   private readonly seat = new THREE.Group();
-  private readonly marshmallow = createMarshmallowStick();
-  private toastStartedAt: number | null = null;
   private readonly timer = new THREE.Timer();
   private sinceRender = 0;
   private sky: Sky | null = null;
@@ -117,9 +114,6 @@ export class Stage {
     this.seat.rotation.y = Math.atan2(-SEAT.x, -SEAT.z);
     this.scene.add(this.seat);
     // Separate rig with the seat's transform so rerolling the character keeps it.
-    this.marshmallow.group.position.copy(SEAT);
-    this.marshmallow.group.rotation.y = this.seat.rotation.y;
-    this.scene.add(this.marshmallow.group);
     this.tarp.group.position.copy(SEAT);
     this.tarp.group.rotation.y = this.seat.rotation.y;
     this.scene.add(this.tarp.group);
@@ -143,7 +137,7 @@ export class Stage {
       o.receiveShadow = true;
     });
     this.scene.add(this.dog.group);
-    this.marshmallow.group.traverse((o) => (o.castShadow = true));
+    this.scene.add(createMarshmallowSkewers());
 
     this.timer.connect(document);
     this.resize();
@@ -183,12 +177,7 @@ export class Stage {
     this.fire.flare();
   }
 
-  /** Starts toasting; progress follows wall-clock time so a hidden tab catches up. */
-  startToast(startedAt: number): void {
-    this.toastStartedAt = startedAt;
-  }
-
-  /** Starts a short meteor shower; timed by wall clock like the marshmallow. */
+  /** Starts a short meteor shower; wall-clock timing catches up after a hidden tab. */
   startWish(startedAt: number): void {
     this.meteors.start(startedAt, Math.random);
   }
@@ -260,9 +249,6 @@ export class Stage {
     fog.far = THREE.MathUtils.lerp(FOG_FAR, 16, rain);
     this.self?.update(elapsed);
     this.dog.update(elapsed);
-    const p = toastProgress(this.toastStartedAt, Date.now());
-    if (p === null) this.toastStartedAt = null;
-    this.marshmallow.setProgress(p);
     if (this.aurora) {
       const level = auroraLevel(this.aurora.startedAt, Date.now());
       this.fire.setAurora(this.aurora.colors, level);

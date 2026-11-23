@@ -277,6 +277,8 @@ const CLEARINGS: Array<[number, number, number]> = [
   [-2.7, -1.0, 1.0],
   // In front of the dog's nose and paws.
   [-1.7, -0.8, 0.95],
+  // The whole rug under the tarp (see rug.ts): grass would poke through it.
+  [-2.13, -1.32, 1.95],
 ];
 
 export interface Environment {

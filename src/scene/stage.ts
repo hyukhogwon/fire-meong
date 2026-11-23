@@ -19,6 +19,7 @@ import { createFire } from "./fire";
 import type { Actor } from "./parts";
 import { createSky, type Sky } from "./sky";
 import { createMarshmallowSkewers } from "./marshmallow";
+import { RUG_THICKNESS, createRug } from './rug';
 import { createNametag } from "./nametag";
 import { MeteorShower } from "./meteors";
 import { auroraLevel } from "../core/aurora";
@@ -110,13 +111,15 @@ export class Stage {
     this.scene.add(this.fire.group);
     this.scene.add(this.meteors.mesh, this.rainfall.mesh);
 
-    this.seat.position.copy(SEAT);
+    // Raised by the rug's thickness: the camper sits on it.
+    this.seat.position.set(SEAT.x, RUG_THICKNESS, SEAT.z);
     this.seat.rotation.y = Math.atan2(-SEAT.x, -SEAT.z);
     this.scene.add(this.seat);
     // Separate rig with the seat's transform so rerolling the character keeps it.
     this.tarp.group.position.copy(SEAT);
     this.tarp.group.rotation.y = this.seat.rotation.y;
     this.scene.add(this.tarp.group);
+    this.tarp.group.add(createRug());
     this.tarp.group.updateMatrixWorld(true);
     this.rainfall.setShelter(
       this.tarp.group.matrixWorld.clone().invert(),
@@ -127,7 +130,7 @@ export class Stage {
     const turn = this.seat.rotation.y;
     this.dog.group.position.set(
       SEAT.x + DOG_OFFSET.x * Math.cos(turn) + DOG_OFFSET.z * Math.sin(turn),
-      0,
+      RUG_THICKNESS,
       SEAT.z - DOG_OFFSET.x * Math.sin(turn) + DOG_OFFSET.z * Math.cos(turn),
     );
     const d = this.dog.group.position;

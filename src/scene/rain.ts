@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-/** Starting drop count; lowered if rain costs more than 2 ms a frame (see the plan). */
-const DROPS = 2000;
+/** Drop count; halved from 2000 by eye, which looked too heavy. */
+const DROPS = 1000;
 /** The box the rain falls through: wide enough to fill the view, from the far ridge to the camera. */
 const AREA = { minX: -8, maxX: 8, minZ: -8, maxZ: 6, top: 8 } as const;
 const FALL_SPEED = 8;

@@ -10,6 +10,12 @@ const ZENITH = new THREE.Color("#070c1a");
 
 const FIREFLIES = 18;
 
+/**
+ * Winter: a light dusting of snow. Bluish grey and darker than it looks, so
+ * the firelit ground near the camp doesn't wash out to white.
+ */
+export const SNOW = new THREE.Color('#a4b0c2');
+
 /** Gentle rolling ground that stays flat around the fire and the seat. */
 export function groundHeight(x: number, z: number): number {
   const r = Math.hypot(x, z);
@@ -114,41 +120,39 @@ function cloudDome(): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
 }
 
 /** A ring of ridge silhouettes; `peak` is how far the tallest summit rises. */
-function ridge(
-  radius: number,
-  base: number,
-  peak: number,
-  color: string,
-  seed: number,
-): THREE.Mesh {
+function ridge(radius: number, base: number, peak: number, color: string, cap: string, seed: number): THREE.Mesh {
   const rand = seeded(seed);
-  const waves = Array.from({ length: 6 }, (_, i) => ({
-    f: 2 + i * 3 + Math.floor(rand() * 3),
-    p: rand() * 6.28,
-    a: 1 / (i + 1.5),
-  }));
+  const waves = Array.from({ length: 6 }, (_, i) => ({ f: 2 + i * 3 + Math.floor(rand() * 3), p: rand() * 6.28, a: 1 / (i + 1.5) }));
   const total = waves.reduce((s, w) => s + w.a, 0);
   const SEG = 240;
+  const body = new THREE.Color(color);
+  const snow = new THREE.Color(cap);
+  const top = new THREE.Color();
   const pos: number[] = [];
+  const col: number[] = [];
   const idx: number[] = [];
   for (let i = 0; i <= SEG; i++) {
     const a = (i / SEG) * Math.PI * 2;
     let n = 0;
     for (const w of waves) n += Math.sin(a * w.f + w.p) * w.a;
-    const h = base + (0.5 + (0.5 * n) / total) * peak;
+    const rise = 0.5 + (0.5 * n) / total;
+    const h = base + rise * peak;
     const x = Math.cos(a) * radius;
     const z = Math.sin(a) * radius;
-    pos.push(x, -2, z, x, h, z);
-    if (i < SEG)
-      idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+    // Three rows: foot, the snow line just under the summit, the summit. Only the higher peaks are capped.
+    pos.push(x, -2, z, x, h - peak * 0.18, z, x, h, z);
+    top.copy(body).lerp(snow, THREE.MathUtils.smoothstep(rise, 0.45, 0.8));
+    col.push(body.r, body.g, body.b, body.r, body.g, body.b, top.r, top.g, top.b);
+    if (i < SEG) {
+      const b = i * 3;
+      idx.push(b, b + 1, b + 3, b + 1, b + 4, b + 3, b + 1, b + 2, b + 4, b + 2, b + 5, b + 4);
+    }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   geo.setIndex(idx);
-  const mesh = new THREE.Mesh(
-    geo,
-    new THREE.MeshBasicMaterial({ color, fog: false, side: THREE.DoubleSide }),
-  );
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide }));
   mesh.frustumCulled = false;
   return mesh;
 }
@@ -173,6 +177,13 @@ function ground(): THREE.Mesh {
       .lerp(soil, m * 0.35);
     // Bare, damp earth along the water's edge.
     c.lerp(mud, 1 - THREE.MathUtils.smoothstep(pondDistance(x, z), 1.05, 1.5));
+    // A patchy dusting of snow, melted around the fire and the water, thin where the camp is trodden.
+    const patch = Math.sin(x * 0.9 - z * 0.4 + 2.1) * Math.cos(z * 1.1 + x * 0.3) * 0.5 + 0.5;
+    let snow = THREE.MathUtils.smoothstep(patch * 0.6 + n * 0.4, 0.2, 0.5);
+    snow *= THREE.MathUtils.smoothstep(Math.hypot(x, z), 1.3, 2.2);
+    snow *= THREE.MathUtils.smoothstep(pondDistance(x, z), 1.1, 1.7);
+    if (CLEARINGS.some(([cx, cz, cr]) => Math.hypot(x - cx, z - cz) < cr)) snow *= 0.4;
+    c.lerp(SNOW, snow * 0.9);
     colors.set([c.r, c.g, c.b], i * 3);
   }
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
@@ -185,13 +196,30 @@ function ground(): THREE.Mesh {
   return mesh;
 }
 
-/** Three stacked cones, unit height, so one instanced draw makes a whole pine. */
+/**
+ * Three stacked cones, unit height, so one instanced draw makes a whole pine.
+ * Vertex colours carry the needles and the snow on the upper half of each
+ * tier; the instance colour only varies brightness.
+ */
 function pineGeometry(): THREE.BufferGeometry {
+  const needles = new THREE.Color('#15281c');
   const tiers = [
     { r: 1, h: 0.5, y: 0.25 },
     { r: 0.76, h: 0.46, y: 0.55 },
     { r: 0.5, h: 0.44, y: 0.82 },
-  ].map((t) => new THREE.ConeGeometry(t.r, t.h, 8).translate(0, t.y, 0));
+  ].map((t) => {
+    const cone = new THREE.ConeGeometry(t.r, t.h, 8, 2).toNonIndexed();
+    const p = cone.attributes.position;
+    const col = new Float32Array(p.count * 3);
+    for (let f = 0; f < p.count; f += 3) {
+      // Whole faces, so the snow line stays crisp: faces above the tier's middle (the base cap is below it).
+      const cy = (p.getY(f) + p.getY(f + 1) + p.getY(f + 2)) / 3;
+      const c = cy > 0 ? SNOW : needles;
+      for (let v = 0; v < 3; v++) col.set([c.r, c.g, c.b], (f + v) * 3);
+    }
+    cone.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return cone.translate(0, t.y, 0);
+  });
   const merged = mergeGeometries(tiers);
   tiers.forEach((t) => t.dispose());
   return merged;
@@ -263,8 +291,8 @@ export function createEnvironment(): Environment {
   const clouds = cloudDome();
   group.add(skyDome(), clouds);
   // Ridges sit inside the star sphere so they hide stars below the skyline.
-  group.add(ridge(78, 3.2, 9.5, "#0c1528", 5));
-  group.add(ridge(62, 2.6, 5.2, "#080e1c", 23));
+  group.add(ridge(78, 3.2, 9.5, '#0c1528', '#3a4862', 5));
+  group.add(ridge(62, 2.6, 5.2, '#080e1c', '#2a364a', 23));
   group.add(ground());
 
   const dirt = new THREE.Mesh(
@@ -339,6 +367,7 @@ export function createEnvironment(): Environment {
       color: 0xffffff,
       roughness: 1,
       flatShading: true,
+      vertexColors: true,
     }),
     total,
   );
@@ -347,7 +376,6 @@ export function createEnvironment(): Environment {
     new THREE.MeshStandardMaterial({ color: 0x2a1c12, roughness: 1 }),
     total,
   );
-  const pine = new THREE.Color("#15281c");
   let t = 0;
   q.identity();
   for (const ring of rings) {
@@ -366,7 +394,7 @@ export function createEnvironment(): Environment {
       q.setFromEuler(e.set(0, rand() * 6.28, 0));
       m.compose(pos.set(x, y + 0.45, z), q, scl.set(w, h, w));
       tops.setMatrixAt(t, m);
-      tops.setColorAt(t, c.copy(pine).multiplyScalar(0.75 + rand() * 0.5));
+      tops.setColorAt(t, c.setScalar(0.75 + rand() * 0.5));
       m.compose(pos.set(x, y, z), q, scl.set(1, 0.7, 1));
       trunks.setMatrixAt(t, m);
     }

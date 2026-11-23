@@ -241,7 +241,6 @@ export class Stage {
     this.environment.setRain(rain);
     this.environment.update(elapsed, this.fire.light);
     this.rainfall.update(elapsed, rain, this.fire.light);
-    this.tarp.setLevel(rain);
     this.skyDim = THREE.MathUtils.lerp(1, RAIN_SKY_SCALE, rain);
     this.sky?.setDim(this.skyDim);
     const fog = this.scene.fog as THREE.Fog;

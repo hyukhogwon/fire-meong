@@ -140,6 +140,8 @@ export function createPond(horizon: THREE.Color, zenith: THREE.Color): Pond {
 
   // Reeds stand in clumps in the shallows, thickest on the far bank so the water stays in view.
   const REEDS = 150;
+  /** Winter: the reeds are cut back to under half their summer height. */
+  const REED_CUT = 0.45;
   const reeds = new THREE.InstancedMesh(
     new THREE.ConeGeometry(0.02, 1, 4).translate(0, 0.5, 0),
     new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 }),
@@ -163,7 +165,7 @@ export function createPond(horizon: THREE.Color, zenith: THREE.Color): Pond {
     for (let k = 0; k < clump && i < REEDS; k++, i++) {
       const x = cx + (rand() - 0.5) * 0.3;
       const z = cz + (rand() - 0.5) * 0.3;
-      const h = 0.45 + rand() * 0.55;
+      const h = (0.45 + rand() * 0.55) * REED_CUT;
       const lean = e.set(
         (rand() - 0.5) * 0.3,
         rand() * 6.28,

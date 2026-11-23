@@ -25,9 +25,9 @@ export function createNametag(name: string): THREE.Sprite {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: tex, depthWrite: false }),
-  );
+  // Drawn last and over everything, so the tarp's poles and cloth never cut into it.
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, depthTest: false }));
+  sprite.renderOrder = 10;
   const scale = 0.0042;
   sprite.scale.set(w * scale, h * scale, 1);
   return sprite;

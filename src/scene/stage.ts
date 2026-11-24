@@ -16,10 +16,11 @@ import { NAMETAG_Y, createCharacter } from "./character";
 import { createDog } from "./dog";
 import { HORIZON, createEnvironment } from "./environment";
 import { createFire } from "./fire";
+import { createCookfire } from "./cookfire";
 import type { Actor } from "./parts";
 import { createSky, type Sky } from "./sky";
 import { createMarshmallowSkewers } from "./marshmallow";
-import { RUG_THICKNESS, createRug } from './rug';
+import { RUG_THICKNESS, createRug } from "./rug";
 import { createNametag } from "./nametag";
 import { MeteorShower } from "./meteors";
 import { auroraLevel } from "../core/aurora";
@@ -36,6 +37,8 @@ const FOG_NEAR = 9;
 const FOG_FAR = 24;
 /** Seat: 2.2 from the fire, behind-left as seen from the camera, facing the fire. */
 const SEAT = new THREE.Vector3(-1.35, 0, -1.74);
+/** Small cooking fire beside the campfire, clear of its stone ring and skewers. */
+const COOKFIRE_AT = new THREE.Vector3(-1.6, 0, 0.4);
 
 function disposeTree(obj: THREE.Object3D) {
   obj.traverse((o) => {
@@ -55,6 +58,7 @@ export class Stage {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.1, 200);
   private readonly fire = createFire();
+  private readonly cookfire = createCookfire();
   private readonly environment = createEnvironment();
   private readonly dog = createDog();
   private self: Actor | null = null;
@@ -109,6 +113,8 @@ export class Stage {
     this.scene.add(this.environment.group);
     this.updateSky(new Date());
     this.scene.add(this.fire.group);
+    this.cookfire.group.position.copy(COOKFIRE_AT);
+    this.scene.add(this.cookfire.group);
     this.scene.add(this.meteors.mesh, this.rainfall.mesh);
 
     // Raised by the rug's thickness: the camper sits on it.
@@ -228,6 +234,7 @@ export class Stage {
     const pxPerUnit =
       bufferH / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)));
     this.fire.setPointScale(pxPerUnit);
+    this.cookfire.setPointScale(pxPerUnit);
     this.environment.setPointScale(pxPerUnit);
   };
 
@@ -240,6 +247,8 @@ export class Stage {
     const rain = rainLevel(this.rain, Date.now());
     this.fire.setRain(rain);
     this.fire.update(this.sinceRender);
+    this.cookfire.setRain(rain);
+    this.cookfire.update(this.sinceRender);
     const elapsed = this.timer.getElapsed();
     this.environment.setRain(rain);
     this.environment.update(elapsed, this.fire.light);

@@ -1,9 +1,13 @@
 import { RAIN_CRICKET_SCALE, RAIN_FADE_MS } from "../core/rain";
 import { acquirePlaybackSession } from "./playback-session";
 import { LoopLayer, CRICKET_MIX } from "./loop-layer";
-import { boostRamps } from "./schedule";
+import { boostRamps, firstGust, nextGust } from "./schedule";
 import { volumeToGain } from "../core/settings";
 const RAIN_MIX = 0.9;
+/** Wind gust level in the mix. */
+export const WIND_MIX = 1.45;
+/** Layout of wind-gusts.m4a: six seven-second gusts in 7.5-second slots. */
+export const WIND_GUSTS = { count: 6, slot: 7.5, length: 7 } as const;
 
 export class FireAudio {
   private ctx: AudioContext | null = null;
@@ -14,6 +18,12 @@ export class FireAudio {
   private rainUnavailable = false;
   private rainGain: GainNode | null = null;
   private cricketGain: GainNode | null = null;
+  private windGain: GainNode | null = null;
+  private windBuffer: AudioBuffer | null = null;
+  private windStarted = false;
+  private readonly windPlays: number[] = [];
+  private readonly windSources = new Set<AudioBufferSourceNode>();
+  private fireStartedAt: number | null = null;
   private layers: LoopLayer[] = [];
   private started = false;
   private disposed = false;
@@ -40,12 +50,15 @@ export class FireAudio {
         boost = ctx.createGain(),
         cricket = ctx.createGain(),
         rain = ctx.createGain(),
+        wind = ctx.createGain(),
         limiter = ctx.createDynamicsCompressor();
       this.master = master;
       this.boostGain = boost;
       master.gain.value = volumeToGain(volume);
       this.cricketGain = cricket;
       this.rainGain = rain;
+      this.windGain = wind;
+      wind.gain.value = WIND_MIX;
       limiter.threshold.value = -3;
       limiter.knee.value = 0;
       limiter.ratio.value = 20;
@@ -54,6 +67,7 @@ export class FireAudio {
       boost.connect(master);
       cricket.connect(master);
       rain.connect(master);
+      wind.connect(master);
       master.connect(limiter).connect(ctx.destination);
       const load = async (name: string, mp3Only = false) => {
         const format =
@@ -103,6 +117,8 @@ export class FireAudio {
       cricket.gain.value = CRICKET_MIX * (raining ? RAIN_CRICKET_SCALE : 1);
       this.layers.forEach((l) => l.start(at));
       this.started = true;
+      this.fireStartedAt = at;
+      void this.loadWind(ctx);
       if (!waitForRain) {
         void loadRain().then((buffer) => {
           if (!buffer || this.ctx !== ctx || !this.started) return;
@@ -126,6 +142,62 @@ export class FireAudio {
       this.closeContext();
       throw e;
     }
+  }
+  /** Wind gust start times, exposed for verification. */
+  get windStarts(): readonly number[] {
+    return this.windPlays;
+  }
+  private async loadWind(ctx: AudioContext): Promise<void> {
+    try {
+      const response = await fetch(
+        `${import.meta.env.BASE_URL}audio/wind-gusts.m4a`,
+      );
+      if (!response.ok) throw Error("바람 음원을 불러오지 못했어요.");
+      const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+      if (this.ctx !== ctx || !this.started) return;
+      this.windBuffer = buffer;
+      this.startWind();
+    } catch (error) {
+      if (this.ctx === ctx) console.warn("wind unavailable", error);
+    }
+  }
+  private startWind(): void {
+    if (
+      !this.ctx ||
+      !this.windBuffer ||
+      !this.windGain ||
+      this.fireStartedAt === null ||
+      this.windStarted
+    )
+      return;
+    this.windStarted = true;
+    this.playGust(
+      firstGust(
+        Math.random,
+        this.fireStartedAt,
+        this.ctx.currentTime,
+        WIND_GUSTS.count,
+      ),
+    );
+  }
+  private playGust(gust: { at: number; index: number }): void {
+    if (!this.ctx || !this.windBuffer || !this.windGain || !this.started)
+      return;
+    const ctx = this.ctx;
+    const source = ctx.createBufferSource();
+    source.buffer = this.windBuffer;
+    source.connect(this.windGain);
+    this.windSources.add(source);
+    source.onended = () => {
+      this.windSources.delete(source);
+      source.disconnect();
+      if (this.ctx !== ctx || !this.started) return;
+      this.playGust(
+        nextGust(Math.random, ctx.currentTime, WIND_GUSTS.count, gust.index),
+      );
+    };
+    source.start(gust.at, gust.index * WIND_GUSTS.slot, WIND_GUSTS.length);
+    this.windPlays.push(gust.at);
   }
   setRain(on: boolean) {
     this.rainOn = on;
@@ -166,6 +238,15 @@ export class FireAudio {
   }
   private closeContext() {
     this.started = false;
+    this.windSources.forEach((source) => {
+      source.onended = null;
+      source.stop();
+      source.disconnect();
+    });
+    this.windSources.clear();
+    this.windStarted = false;
+    this.windBuffer = null;
+    this.fireStartedAt = null;
     this.layers.forEach((l) => l.stop());
     this.layers = [];
     if (this.ctx) {
@@ -176,6 +257,7 @@ export class FireAudio {
     this.rainUnavailable = false;
     this.rainGain = null;
     this.cricketGain = null;
+    this.windGain = null;
     this.releaseSession?.();
     this.releaseSession = null;
   }

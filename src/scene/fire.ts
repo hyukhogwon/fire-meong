@@ -58,7 +58,7 @@ function flareLevel(t: number): number {
  * with scrolling noise into a teardrop of licking tongues. Colours are HDR so
  * the hot core feeds the bloom pass.
  */
-function flameMaterial(
+export function flameMaterial(
   seed: number,
   w: number,
   h: number,
@@ -138,7 +138,10 @@ function flameMaterial(
 }
 
 /** Glowing coal bed under the logs: dark crust with slowly breathing orange cracks. */
-function emberBed(): THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial> {
+export function emberBed(): THREE.Mesh<
+  THREE.CircleGeometry,
+  THREE.ShaderMaterial
+> {
   const mesh = new THREE.Mesh(
     new THREE.CircleGeometry(0.5, 32),
     new THREE.ShaderMaterial({
@@ -177,7 +180,7 @@ function emberBed(): THREE.Mesh<THREE.CircleGeometry, THREE.ShaderMaterial> {
 }
 
 /** Charred-bark emissive map: mostly black with thin glowing seams. */
-function charTexture(): THREE.Texture {
+export function charTexture(): THREE.Texture {
   const size = 128;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;

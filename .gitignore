@@ -2,6 +2,7 @@ node_modules/
 dist/
 assets/raw/*.wav
 assets/raw/*.aiff
+assets/raw/*.mp3
 playwright-report/
 test-results/
 .env.local

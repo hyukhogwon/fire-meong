@@ -64,3 +64,36 @@ export function reanchorIfLate(
     return startAt;
   return now + LATE_LEAD_S - i * (bufferDuration - CROSSFADE_S);
 }
+
+/** Seconds of quiet between one wind gust ending and the next starting. */
+export const GUST_GAP_S = { min: 25, max: 70 } as const;
+
+/** The next gust in AudioContext time, never repeating the previous sample. */
+export function nextGust(
+  rand: () => number,
+  after: number,
+  count: number,
+  last: number,
+): { at: number; index: number } {
+  const at =
+    after + GUST_GAP_S.min + rand() * (GUST_GAP_S.max - GUST_GAP_S.min);
+  if (count <= 1 || last < 0) return { at, index: Math.floor(rand() * count) };
+  const pick = Math.floor(rand() * (count - 1));
+  return { at, index: pick >= last ? pick + 1 : pick };
+}
+
+/** Seconds after the fire starts that the first wind gust comes. */
+export const FIRST_GUST_S = 5;
+
+/** First gust, or just after now when its file loaded late. */
+export function firstGust(
+  rand: () => number,
+  fireStart: number,
+  now: number,
+  count: number,
+): { at: number; index: number } {
+  return {
+    at: Math.max(fireStart + FIRST_GUST_S, now + LATE_LEAD_S),
+    index: Math.floor(rand() * count),
+  };
+}

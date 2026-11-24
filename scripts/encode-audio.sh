@@ -55,3 +55,28 @@ if [ "$renc" -gt "$rraw" ]; then
   echo "rain encode added dropouts" >&2
   exit 1
 fi
+
+# Wind gusts (CC0, Freesound 69512): winter wind whistling through a window gap.
+# Six seven-second gusts are faded and separated by half a second of silence.
+WSRC=assets/raw/69512__audible-edge__winter-wind-whistling-through-window.mp3
+WOUT=public/audio/wind-gusts.m4a
+WFC=""
+wi=0
+for ws in 83.5 121.75 159.25 186.25 203.75 223.25; do
+  WFC="${WFC}[0:a]atrim=start=${ws}:duration=7,asetpts=PTS-STARTPTS,afade=t=in:d=1.5,afade=t=out:st=5:d=2,apad=pad_dur=0.5[g${wi}];"
+  wi=$((wi + 1))
+done
+WFC="${WFC}[g0][g1][g2][g3][g4][g5]concat=n=6:v=0:a=1,volume=18dB[out]"
+ffmpeg -hide_banner -loglevel error -y -i "$WSRC" -filter_complex "$WFC" -map "[out]" -c:a aac -b:a 128k "$WOUT"
+# Compare the encode against the identically faded and padded cut.
+WTMP=$(mktemp -d)
+trap 'rm -rf "$WTMP"' EXIT
+WCUT="$WTMP/cut.wav"
+ffmpeg -hide_banner -loglevel error -y -i "$WSRC" -filter_complex "$WFC" -map "[out]" -c:a pcm_f32le "$WCUT"
+wraw=$(python3 -I scripts/check-dropouts.py "$WCUT" 10 | head -1 | sed 's/.*: //')
+wenc=$(python3 -I scripts/check-dropouts.py "$WOUT" 10 | head -1 | sed 's/.*: //')
+echo "wind gust dropout windows: cut=$wraw encoded=$wenc"
+if [ "$wenc" -gt "$wraw" ]; then
+  echo "wind gust encode added dropouts" >&2
+  exit 1
+fi

@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { FireAudio, WIND_GUSTS } from "./fire-audio";
+import { FireAudio, WIND_GUSTS, WIND_MIX } from "./fire-audio";
 import { FIRST_GUST_S, GUST_GAP_S } from "./schedule";
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -32,6 +32,10 @@ describe("FireAudio의 모바일 세션 수명", () => {
 });
 
 describe("간헐적인 바람 돌풍", () => {
+  it("바람을 낮춘 믹스 크기로 재생한다", () => {
+    expect(WIND_MIX).toBe(1.15);
+  });
+
   it("불 시작 5초 뒤 한 구간을 재생하고 끝나면 다른 구간을 예약한다", () => {
     const sources: Array<{
       onended: (() => void) | null;

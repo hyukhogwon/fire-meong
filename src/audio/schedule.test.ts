@@ -10,7 +10,7 @@ import {
 describe("nextGust", () => {
   const always = (v: number) => () => v;
 
-  it("25~70초 뒤에 다음 돌풍을 예약한다", () => {
+  it("45~100초 뒤에 다음 돌풍을 예약한다", () => {
     expect(nextGust(always(0), 100, 6, -1).at).toBe(100 + GUST_GAP_S.min);
     expect(nextGust(always(0.999999), 100, 6, -1).at).toBeCloseTo(
       100 + GUST_GAP_S.max,

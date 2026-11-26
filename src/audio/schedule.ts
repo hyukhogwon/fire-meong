@@ -66,7 +66,7 @@ export function reanchorIfLate(
 }
 
 /** Seconds of quiet between one wind gust ending and the next starting. */
-export const GUST_GAP_S = { min: 25, max: 70 } as const;
+export const GUST_GAP_S = { min: 45, max: 100 } as const;
 
 /** The next gust in AudioContext time, never repeating the previous sample. */
 export function nextGust(

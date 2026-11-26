@@ -5,7 +5,7 @@ import { boostRamps, firstGust, nextGust } from "./schedule";
 import { volumeToGain } from "../core/settings";
 const RAIN_MIX = 0.9;
 /** Wind gust level in the mix. */
-export const WIND_MIX = 1.45;
+export const WIND_MIX = 1.15;
 /** Layout of wind-gusts.m4a: six seven-second gusts in 7.5-second slots. */
 export const WIND_GUSTS = { count: 6, slot: 7.5, length: 7 } as const;
 
